@@ -1,4 +1,5 @@
 import {compileProgram} from './landscape.js';
+import {vertex as fullscreenVertex} from './shaders.js';
 
 const vertex=`#version 300 es
 precision highp float;
@@ -54,9 +55,57 @@ void main(){
  outColor=vec4(tint*energy*gaussian*visibility,0.);
 }`;
 
+const galaxyFragment=`#version 300 es
+precision highp float;
+in vec2 uv;
+uniform sampler2D galaxyMap,skyMap,landscapeMap;
+uniform vec4 viewRect;
+uniform float hour,aspect,enabled,ready;
+out vec4 outColor;
+void main(){
+ vec2 screen=uv*2.-1.;
+ vec3 d=normalize(vec3(screen.x*aspect*.72,screen.y*.62+.76,1.3));
+ if(enabled>.5){vec2 p=viewRect.xy+uv*viewRect.zw;d=normalize(vec3((p.x*2.-1.)*1.25,(p.y*2.-1.)*.70+.10,1.3));}
+ float horizon=smoothstep(0.,.18,d.y);
+ float spin=hour/24.*6.28318530718;
+ vec3 axis=normalize(vec3(.18,.75,.63));
+ d=d*cos(spin)+cross(axis,d)*sin(spin)+axis*dot(axis,d)*(1.-cos(spin));
+ // Fixed artistic orientation of the panorama; the spin matches the catalogue.
+ vec3 centre=normalize(vec3(0.,.35,1.));
+ vec3 tangent=normalize(vec3(.87,.45,-.16));
+ tangent=normalize(tangent-centre*dot(tangent,centre));
+ vec3 north=normalize(cross(centre,tangent));
+ vec2 coord=vec2(.5+atan(dot(d,tangent),dot(d,centre))/6.28318530718,.5+asin(clamp(dot(d,north),-1.,1.))/3.14159265359);
+ // Wrapped derivatives prevent a false coarse mip at the longitude seam.
+ vec2 dx=dFdx(coord),dy=dFdy(coord);dx.x-=round(dx.x);dy.x-=round(dy.x);
+ vec3 glow=textureGrad(galaxyMap,coord,dx,dy).rgb;
+ float edge=min(coord.x,1.-coord.x);
+ vec3 join=(textureLod(galaxyMap,vec2(.002,coord.y),2.).rgb+textureLod(galaxyMap,vec2(.998,coord.y),2.).rgb)*.5;
+ glow=mix(join,glow,smoothstep(0.,.015,edge));
+ float polar=smoothstep(.965,1.,abs(coord.y*2.-1.));
+ glow=mix(glow,textureLod(galaxyMap,vec2(.5,coord.y),8.).rgb,polar);
+ float angle=(hour-6.)/24.*6.28318530718;
+ float solar=sin(angle)/length(vec3(cos(angle)*.85,sin(angle),.65));
+ float visibility=(1.-smoothstep(-.28,-.10,solar))*horizon*texture(skyMap,uv).a;
+ if(enabled>.5&&ready>.5){vec2 p=viewRect.xy+uv*viewRect.zw;vec3 photo=texture(landscapeMap,p).rgb;visibility*=smoothstep(.05,.40,min(photo.r,photo.b)-photo.g)*smoothstep(.26,.33,p.y);}
+ outColor=vec4(max(glow-vec3(.012),vec3(0.))*.45*visibility,0.);
+}`;
+
 export class Stars {
  constructor(gl){
-  this.gl=gl;this.program=compileProgram(gl,vertex,fragment);
+  this.gl=gl;this.galaxyReady=false;
+  this.galaxyProgram=compileProgram(gl,fullscreenVertex,galaxyFragment);
+  this.galaxyUniforms=Object.fromEntries(['hour','aspect','enabled','viewRect','skyMap','landscapeMap','galaxyMap','ready'].map(n=>[n,gl.getUniformLocation(this.galaxyProgram,n)]));
+  this.galaxyVao=gl.createVertexArray();this.galaxyTexture=gl.createTexture();
+  const image=new Image();image.onload=()=>{
+   if(gl.isContextLost())return;
+   gl.activeTexture(gl.TEXTURE3);gl.bindTexture(gl.TEXTURE_2D,this.galaxyTexture);
+   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,image);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);
+   gl.generateMipmap(gl.TEXTURE_2D);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.REPEAT);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+   this.galaxyReady=true;document.querySelector('#sky').dataset.milkyWay='ready';
+  };image.onerror=()=>console.warn('Milky Way image unavailable; retaining the star catalogue.');image.src='/assets/milky-way.png';
+  this.program=compileProgram(gl,vertex,fragment);
   this.uniforms=Object.fromEntries(['hour','aspect','pixelRatio','enabled','viewRect','skyMap','landscapeMap','resolution','ready'].map(n=>[n,gl.getUniformLocation(this.program,n)]));
   // A deterministic synthetic catalogue distributed evenly over a sphere.
   // It is generated once; only the shared orientation changes with time.
@@ -72,7 +121,15 @@ export class Stars {
   gl.bindVertexArray(null);
  }
  draw(state,rect,width,height,ready){
-  const gl=this.gl,u=this.uniforms;gl.useProgram(this.program);gl.bindVertexArray(this.vao);
+  const gl=this.gl,u=this.uniforms;
+  if(this.galaxyReady){
+   const g=this.galaxyUniforms;gl.useProgram(this.galaxyProgram);gl.bindVertexArray(this.galaxyVao);
+   gl.activeTexture(gl.TEXTURE3);gl.bindTexture(gl.TEXTURE_2D,this.galaxyTexture);gl.uniform1i(g.galaxyMap,3);
+   gl.uniform1i(g.skyMap,1);gl.uniform1i(g.landscapeMap,2);gl.uniform1f(g.hour,((state.hour%24)+24)%24);
+   gl.uniform1f(g.aspect,width/height);gl.uniform1f(g.enabled,state.scene==='landscape'?1:0);gl.uniform1f(g.ready,ready?1:0);gl.uniform4fv(g.viewRect,rect);
+   gl.enable(gl.BLEND);gl.blendFunc(gl.ONE,gl.ONE);gl.drawArrays(gl.TRIANGLES,0,3);gl.disable(gl.BLEND);
+  }
+  gl.useProgram(this.program);gl.bindVertexArray(this.vao);
   gl.uniform1f(u.hour,((state.hour%24)+24)%24);gl.uniform1f(u.aspect,width/height);
   gl.uniform1f(u.pixelRatio,width/innerWidth);gl.uniform1f(u.enabled,state.scene==='landscape'?1:0);gl.uniform1f(u.ready,ready?1:0);
   gl.uniform4fv(u.viewRect,rect);gl.uniform2f(u.resolution,width,height);
