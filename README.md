@@ -44,3 +44,9 @@ Limitations: the frame is conceptual, not structurally engineered or an approved
 ### Open wall-frame timelapse
 
 The bright blond timber remains fully open: there is no plywood, sheathing, cladding, or solid roof. Complete preassembled stud-wall frames pop into their upright positions as single units: rear at 9 a.m., left at 10:30 a.m., right at noon, and front (including its opening header) at 1:30 p.m. Six open roof frames arrive every 20 minutes from 3 to 4:40 p.m.; the ridge beam arrives at 5 p.m. Members have their full dimensions immediately; they no longer grow individually. Reverse scrubbing removes the same assemblies at the same thresholds. This stylized timelapse skips the physical lifting motion, showing the result of each wall raising.
+
+### Stable rotating stars
+
+`src/stars.js` creates one deterministic synthetic catalogue of 3,200 directions, brightness values, and colors. A shared rotation moves the field through the sky; stars are never regenerated or given random per-frame brightness. Stars render as Gaussian point sprites at display resolution after the lower-resolution cloud pass, avoiding the old subpixel flicker from hashing tiny points in the cloud texture. The cloud texture's alpha carries transmission, and the photographic skyline masks stars behind terrain and trees. Twilight and horizon attenuation remain gradual. Star resolution is independent of the cloud detail setting.
+
+Verification: browser readback showed identical paused frames (zero changed color channels), continuous aggregate star energy during small time changes, and no WebGL errors.

@@ -50,13 +50,6 @@ vec3 skyColor(vec3 rd,vec3 sun,float day,float dusk){
  col+=vec3(1.,.83,.58)*disc*7.;
  vec3 moon=normalize(vec3(-sun.x,.48,-sun.z));
  col+=vec3(.65,.75,1.)*smoothstep(.99980,.99987,dot(rd,moon))*(1.-day)*1.8;
- float spin=hour/24.*2.*PI;
- vec3 axis=normalize(vec3(.18,.75,.63));
- vec3 starsDir=rd*cos(spin)+cross(axis,rd)*sin(spin)+axis*dot(axis,rd)*(1.-cos(spin));
- vec2 starUV=vec2(atan(starsDir.x,starsDir.z),asin(clamp(starsDir.y,-1.,1.)))*650.;
- vec2 cell=floor(starUV);vec2 pos=fract(starUV)-.5;
- float star=pow(max(0.,1.-length(pos)*2.),7.)*step(.996,hash(cell));
- col+=star*vec3(.72,.82,1.)*pow(1.-day,5.)*smoothstep(0.,.3,rd.y)*1.5;
  return col;
 }
 void main(){
@@ -70,6 +63,7 @@ void main(){
  float dusk=exp(-pow((sun.y-.015)/.19,2.));
  vec3 background=skyColor(rd,sun,day,dusk);
  vec3 result=background;
+ float starTransmission=1.;
  if(rd.y>.015){
   float nearT=1.4/rd.y,farT=min(4.2/rd.y,nearT+65.);
   float dt=(farT-nearT)/float(steps);
@@ -105,10 +99,11 @@ void main(){
   // Aerial perspective keeps distant cloud banks from becoming a hard wall.
   float haze=1.-exp(-nearT*mix(.012,.027,landscapeEnabled));
   result=mix(scatter+background*transmission,background,haze);
+  starTransmission=mix(transmission,1.,haze);
  }
  // Gentle filmic compression and display gamma.
  result=1.-exp(-result*1.25);
  result=pow(max(result,vec3(0.)),vec3(1./2.2));
  result+=(hash(gl_FragCoord.xy+17.)-.5)/255.;
- fragColor=vec4(result,1.);
+ fragColor=vec4(result,starTransmission);
 }`;

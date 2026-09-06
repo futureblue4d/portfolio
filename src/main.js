@@ -2,6 +2,7 @@ import './style.css';
 import {vertex, fragment} from './shaders.js';
 import {createNoiseVolume} from './noise.js';
 import {Landscape} from './landscape.js';
+import {Stars} from './stars.js';
 
 const canvas = document.querySelector('#sky');
 const clock = document.querySelector('#clock');
@@ -47,7 +48,7 @@ document.querySelector('#cover').addEventListener('input',e=>{state.cover=Number
 document.querySelector('#wind').addEventListener('input',e=>{state.wind=Number(e.target.value);document.querySelector('#wind-value').value=state.wind===0?'Still':state.wind<.8?'Gentle':state.wind<1.5?'Breezy':'Brisk';});
 document.querySelector('#quality').value=state.quality;
 document.querySelector('#quality').addEventListener('change',e=>{state.quality=e.target.value;resize();});
-let gl, program, uniforms, animationId, landscape, house;
+let gl, program, uniforms, animationId, landscape, house, stars, screenVao;
 let construction=.65,followTime=true;
 const buildSlider=document.querySelector('#construction');
 const follow=document.querySelector('#follow-time');
@@ -86,14 +87,14 @@ function setup(){
  gl.attachShader(program,vs);gl.attachShader(program,fs);gl.linkProgram(program);
  if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(program));
  gl.deleteShader(vs);gl.deleteShader(fs);gl.useProgram(program);
- gl.bindVertexArray(gl.createVertexArray());
+ screenVao=gl.createVertexArray();gl.bindVertexArray(screenVao);
  uniforms=Object.fromEntries(['resolution','hour','drift','coverage','steps','noiseMap','viewRect','landscapeEnabled'].map(n=>[n,gl.getUniformLocation(program,n)]));
  const {data,size}=createNoiseVolume();
  const texture=gl.createTexture();gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_3D,texture);
  gl.texImage3D(gl.TEXTURE_3D,0,gl.RG8,size,size,size,0,gl.RG,gl.UNSIGNED_BYTE,data);
  gl.texParameteri(gl.TEXTURE_3D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_3D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
  for(const p of [gl.TEXTURE_WRAP_S,gl.TEXTURE_WRAP_T,gl.TEXTURE_WRAP_R])gl.texParameteri(gl.TEXTURE_3D,p,gl.REPEAT);
- gl.uniform1i(uniforms.noiseMap,0);landscape=new Landscape(gl,showError);resize();
+ gl.uniform1i(uniforms.noiseMap,0);landscape=new Landscape(gl,showError);stars=new Stars(gl);resize();
  document.querySelector('#error').hidden=true;
  canvas.dataset.renderer='webgl2';
 }
@@ -107,13 +108,14 @@ function frame(now){
   if(Math.abs(state.target-state.hour)<.0005)state.hour=state.target;
   // Clock changes move the weather forward or backward as well as the sun.
   state.drift+=(state.hour-oldHour)*1.8+(state.playing?dt*state.wind*.12:0);
-  landscape.beginSky();gl.useProgram(program);
+  gl.bindVertexArray(screenVao);landscape.beginSky();gl.useProgram(program);
   gl.uniform2f(uniforms.resolution,landscape.width,landscape.height);
   gl.uniform4fv(uniforms.viewRect,viewRect);gl.uniform1f(uniforms.landscapeEnabled,state.scene==='landscape'?1:0);
   gl.uniform1f(uniforms.hour,wrap(state.hour));gl.uniform1f(uniforms.drift,state.drift);
   gl.uniform1f(uniforms.coverage,state.cover);gl.uniform1i(uniforms.steps,{low:36,balanced:56,high:88}[state.quality]);
   gl.drawArrays(gl.TRIANGLES,0,3);
   landscape.draw(state,viewRect,canvas.width,canvas.height);
+  stars.draw(state,viewRect,canvas.width,canvas.height,landscape.ready);
   const progress=constructionProgress();
   if(house){try{house.draw(state,progress);}catch(error){console.error("House draw failed: "+String(error)+" "+error?.stack);house=null;}}
   buildSlider.value=progress;
