@@ -18,7 +18,6 @@ function updateUI() {
   clock.innerHTML = `${hours%12 || 12}:${String(minutes).padStart(2,'0')} <small>${hours<12?'am':'pm'}</small>`;
   clock.dateTime = `${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}`;
   timeSlider.value = h;
-  document.querySelector('#period').textContent = h<5 || h>=21?'Under the same stars.':h<8?'A day, beginning.':h<12?'The morning opens up.':h<17?'The afternoon, unhurried.':h<20?'Stay for the last light.':'Between the day and the dark.';
   play.textContent=state.playing?'Ⅱ':'▷';
   play.setAttribute('aria-label',state.playing?'Pause time':'Play time');
   play.title=state.playing?'Pause time':'Play time';
@@ -49,14 +48,9 @@ document.querySelector('#wind').addEventListener('input',e=>{state.wind=Number(e
 document.querySelector('#quality').value=state.quality;
 document.querySelector('#quality').addEventListener('change',e=>{state.quality=e.target.value;resize();});
 let gl, program, uniforms, animationId, landscape, house, stars, screenVao;
-let construction=.65,followTime=true;
-const buildSlider=document.querySelector('#construction');
-const follow=document.querySelector('#follow-time');
-buildSlider.addEventListener('input',()=>{construction=Number(buildSlider.value);followTime=false;follow.checked=false;});
-follow.addEventListener('change',()=>{followTime=follow.checked;});
 function constructionProgress(){
- if(followTime){const h=wrap(state.hour);construction=h<5?1:Math.max(0,Math.min(1,(h-7)/11));}
- return construction;
+ const h=wrap(state.hour);
+ return h<5?1:Math.max(0,Math.min(1,(h-7)/11));
 }
 const about=document.querySelector('#about');
 document.querySelector('#about-open').addEventListener('click',()=>about.showModal());
@@ -120,9 +114,6 @@ function frame(now){
   stars.draw(state,viewRect,canvas.width,canvas.height,landscape.ready);
   const progress=constructionProgress();
   if(house){try{house.draw(state,progress);}catch(error){console.error("House draw failed: "+String(error)+" "+error?.stack);house=null;}}
-  buildSlider.value=progress;
-  document.querySelector('#build-stage').textContent=progress<2/11?'The site':progress<3.5/11?'Rear wall raised':progress<5/11?'Left wall raised':progress<6.5/11?'Right wall raised':progress<8/11?'Front wall raised':progress<10/11?'Roof frames arriving':'Open frame complete';
-  document.querySelector('#build-value').textContent=`${Math.round(progress*100)}%`;
   if(now-uiAt>100){updateUI();uiAt=now;}
  }
  animationId=requestAnimationFrame(frame);
@@ -133,4 +124,4 @@ canvas.addEventListener('webglcontextrestored',()=>{try{setup();last=performance
 updateUI();
 try{setup();animationId=requestAnimationFrame(frame);}catch(error){console.error(error);showError(error.message);}
 
-import('./house.js').then(({HouseStudy})=>new HouseStudy().init()).then(result=>{house=result;house.resize(viewRect,innerWidth,innerHeight);}).catch(error=>{console.error(error);document.querySelector('#build-stage').textContent='3D frame unavailable';document.querySelector('#construction-panel').title='The 3D renderer could not initialize. The sky and landscape are still available.';});
+import('./house.js').then(({HouseStudy})=>new HouseStudy().init()).then(result=>{house=result;house.resize(viewRect,innerWidth,innerHeight);}).catch(error=>{console.error(error);showError('The 3D frame could not initialize. The sky and landscape are still available.');});
