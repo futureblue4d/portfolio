@@ -9,15 +9,16 @@ const clock = document.querySelector('#clock');
 const timeSlider = document.querySelector('#time');
 const play = document.querySelector('#play');
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-const state = {scene:'landscape', hour:14, target:14, playing:!reducedMotion, cover:.55, wind:.5, drift:0, quality:matchMedia('(pointer: coarse)').matches?'low':'balanced'};
+const visitTime=new Date();
+const localHour=visitTime.getHours()+visitTime.getMinutes()/60+visitTime.getSeconds()/3600+visitTime.getMilliseconds()/3600000;
+const state = {scene:'landscape', hour:localHour, target:localHour, playing:!reducedMotion, cover:.55, wind:.5, drift:0, quality:matchMedia('(pointer: coarse)').matches?'low':'balanced'};
 const wrap = n => (n % 24 + 24) % 24;
 function updateUI() {
-  const h = wrap(state.hour), totalMinutes = Math.round(h*60)%1440, hours = Math.floor(totalMinutes/60), minutes = totalMinutes%60;
+  const h = wrap(state.hour), totalMinutes = Math.floor(h*60+1e-7)%1440, hours = Math.floor(totalMinutes/60), minutes = totalMinutes%60;
   clock.innerHTML = `${hours%12 || 12}:${String(minutes).padStart(2,'0')} <small>${hours<12?'am':'pm'}</small>`;
   clock.dateTime = `${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}`;
   timeSlider.value = h;
   document.querySelector('#period').textContent = h<5 || h>=21?'Under the same stars.':h<8?'A day, beginning.':h<12?'The morning opens up.':h<17?'The afternoon, unhurried.':h<20?'Stay for the last light.':'Between the day and the dark.';
-  for (const b of document.querySelectorAll('[data-hour]')) b.classList.toggle('active',Math.abs(((h-Number(b.dataset.hour)+36)%24)-12)<1.3);
   play.textContent=state.playing?'Ⅱ':'▷';
   play.setAttribute('aria-label',state.playing?'Pause time':'Play time');
   play.title=state.playing?'Pause time':'Play time';
@@ -29,7 +30,6 @@ function setTime(value, immediate=false) {
   updateUI();
 }
 play.addEventListener('click',()=>{state.playing=!state.playing;updateUI();});
-for(const button of document.querySelectorAll('[data-hour]')) button.addEventListener('click',()=>setTime(Number(button.dataset.hour)));
 timeSlider.addEventListener('input',()=>setTime(Number(timeSlider.value),true));
 let drag=null;
 canvas.addEventListener('pointerdown',e=>{if(e.button!==0)return;drag={id:e.pointerId,x:e.clientX,hour:state.target};canvas.setPointerCapture(e.pointerId);canvas.focus({preventScroll:true});});
@@ -98,11 +98,13 @@ function setup(){
  document.querySelector('#error').hidden=true;
  canvas.dataset.renderer='webgl2';
 }
-let last=performance.now(),uiAt=0;
+let last=performance.now(),uiAt=0,lastClock=Date.now();
 function frame(now){
  const dt=Math.min((now-last)/1000,.08);last=now;
  if(!document.hidden){
-  if(state.playing&&!drag)state.target+=dt*.012;
+  const clockNow=Date.now();
+  if(state.playing&&!drag)state.target+=(clockNow-lastClock)/3600000;
+  lastClock=clockNow;
   const oldHour=state.hour;
   state.hour+=(state.target-state.hour)*(1-Math.exp(-dt*9));
   if(Math.abs(state.target-state.hour)<.0005)state.hour=state.target;

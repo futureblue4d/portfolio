@@ -11,7 +11,7 @@ npm run dev
 
 Open the local URL printed by Vite. `npm run build` creates a static production site in `dist`; `npm run preview` serves that build.
 
-Drag horizontally to travel through time (one viewport = 12 hours). Scroll or use the left/right arrows; Shift + arrow moves one hour. The presets and bottom timeline also set time. Space or the pause button pauses both the clock and wind. Atmosphere controls cloud coverage, wind, and rendering detail. Reduced-motion preferences start the experience paused.
+Drag horizontally to travel through time (one viewport = 12 hours). Scroll or use the left/right arrows; Shift + arrow moves one hour. The bottom timeline also sets time. Space or the pause button pauses both the clock and wind. Atmosphere controls cloud coverage, wind, and rendering detail. Reduced-motion preferences start the experience paused.
 
 ## Rendering
 
@@ -27,7 +27,7 @@ The default Panorama view composites `public/assets/panorama-keyed.png` beneath 
 
 `src/landscape.js` renders the photographic artwork at display resolution while the expensive cloud pass runs at the selected lower resolution. Its fixed-view shader approximates surface lighting, warm twilight, cool moonlit terrain, distance haze, and drifting cloud shade. This is a 2D photographic composite with approximate relighting, not a depth-reconstructed terrain mesh or physical shadow simulation. Some original illumination remains in the artwork. The distant photographed water is static.
 
-The stars now rotate as a shared field with the clock. Dragging, scrolling, time presets, and the timeline update both scene lighting and cloud movement. Pause stops automatic weather and clock movement.
+The stars now rotate as a shared field with the clock. Dragging, scrolling, and the timeline update both scene lighting and cloud movement. Pause stops automatic weather and clock movement.
 
 See ASSETS.md for the built-in image-generation prompts and asset provenance.
 
@@ -50,3 +50,7 @@ The bright blond timber remains fully open: there is no plywood, sheathing, clad
 `src/stars.js` creates one deterministic synthetic catalogue of 3,200 directions, brightness values, and colors. A shared rotation moves the field through the sky; stars are never regenerated or given random per-frame brightness. Stars render as Gaussian point sprites at display resolution after the lower-resolution cloud pass, avoiding the old subpixel flicker from hashing tiny points in the cloud texture. The cloud texture's alpha carries transmission, and the photographic skyline masks stars behind terrain and trees. Twilight and horizon attenuation remain gradual. Star resolution is independent of the cloud detail setting.
 
 Verification: browser readback showed identical paused frames (zero changed color channels), continuous aggregate star energy during small time changes, and no WebGL errors.
+
+### Visitor-local time
+
+Each visit initializes from the browser's local clock (including fractional minutes), without location permission or a server timezone. While playing, the scene advances at real clock speed; drag, scroll, arrow keys, and the timeline still let visitors explore another time. Pausing freezes the scene. The Dawn/Day/Dusk/Night preset buttons have been removed.
