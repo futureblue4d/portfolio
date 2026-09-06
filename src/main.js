@@ -99,8 +99,8 @@ function frame(now){
  const dt=Math.min((now-last)/1000,.08);last=now;
  if(!document.hidden){
   // Playing runs the day faster than real time so the sky visibly moves; a real-time
-  // rate is indistinguishable from paused. A full day cycles in about eight minutes.
-  if(state.playing&&!drag)state.target+=dt*.05;
+  // rate is indistinguishable from paused. A full day cycles in about sixteen minutes.
+  if(state.playing&&!drag)state.target+=dt*.025;
   const oldHour=state.hour;
   state.hour+=(state.target-state.hour)*(1-Math.exp(-dt*9));
   if(Math.abs(state.target-state.hour)<.0005)state.hour=state.target;
