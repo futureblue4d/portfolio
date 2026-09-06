@@ -17,7 +17,3 @@ Use case: precise-object-edit. Edit this landscape asset with exact pixel compos
 The user supplied `ChatGPT Image Sep 5, 2026, 11_08_52 PM.png`, with neutral lighting and an empty concrete pad. Built-in image generation produced the runtime asset `public/assets/empty-site-keyed.png`. The 3D timber frame is generated entirely in `src/house.js`, not baked into the image.
 
 Prompt: Use case: precise-object-edit. Production landscape texture for a fixed-view website. Keep this supplied image's EXACT composition, empty concrete building slab at right-center, road, land, trees, neutral illumination, hills, water, and camera viewpoint. Do not add any buildings, house, frame, vehicles, objects, or shadows. Change ONLY the white/gray checkerboard sky region to perfectly uniform solid chroma key magenta #FF00FF, including checkerboard between branches. Preserve all tree foliage and all distant hill silhouette detail without changing their position. No checkerboard remaining, no text, no sky gradient. Maintain the exact 1774x887 2:1 composition and slab position. This must remain an empty site; a real 3D building frame will be added by code.
-
-## Milky Way panorama
-
-`public/assets/milky-way.png` is the original user-supplied `ChatGPT Image Sep 6, 2026, 08_25_26 AM.png`, copied without modification. It is an artistic generated sky, not an astronomical catalogue. The runtime shader applies spherical mapping, a fixed orientation, shared celestial rotation, filtered longitude wrapping, and polar softening. No new image generation was performed for this integration.

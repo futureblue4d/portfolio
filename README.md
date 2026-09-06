@@ -50,7 +50,3 @@ The bright blond timber remains fully open: there is no plywood, sheathing, clad
 `src/stars.js` creates one deterministic synthetic catalogue of 3,200 directions, brightness values, and colors. A shared rotation moves the field through the sky; stars are never regenerated or given random per-frame brightness. Stars render as Gaussian point sprites at display resolution after the lower-resolution cloud pass, avoiding the old subpixel flicker from hashing tiny points in the cloud texture. The cloud texture's alpha carries transmission, and the photographic skyline masks stars behind terrain and trees. Twilight and horizon attenuation remain gradual. Star resolution is independent of the cloud detail setting.
 
 Verification: browser readback showed identical paused frames (zero changed color channels), continuous aggregate star energy during small time changes, and no WebGL errors.
-
-### Milky Way background
-
-The user-supplied `public/assets/milky-way.png` now renders beneath the crisp star catalogue at display resolution. Its spherical sampling uses the inverse of the catalogue's rotation, so both remain locked together through time and across midnight. Mip filtering, wrapped longitude derivatives, a narrow edge blend, and polar softening reduce texture aliasing and seam artifacts. Both stellar layers respect cloud transmission, terrain masking, twilight, and horizon extinction. The original panorama remains unmodified on disk; the orientation and intensity are artistic rather than location/date-accurate astronomy.
