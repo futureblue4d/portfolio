@@ -53,7 +53,7 @@ function constructionProgress(){
  return h<5?1:Math.max(0,Math.min(1,(h-7)/11));
 }
 const about=document.querySelector('#about');
-for(const opener of document.querySelectorAll('#about-open,#intro-open'))opener.addEventListener('click',()=>about.showModal());
+document.querySelector('#intro-open').addEventListener('click',()=>about.showModal());
 document.querySelector('#about-close').addEventListener('click',()=>about.close());
 let viewRect=new Float32Array([0,0,1,1]);
 document.querySelector('#scene').addEventListener('change',e=>{state.scene=e.target.value;resize();});
