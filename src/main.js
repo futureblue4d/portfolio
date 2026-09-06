@@ -117,7 +117,7 @@ function frame(now){
   const progress=constructionProgress();
   if(house){try{house.draw(state,progress);}catch(error){console.error("House draw failed: "+String(error)+" "+error?.stack);house=null;}}
   buildSlider.value=progress;
-  document.querySelector('#build-stage').textContent=progress<.009?'The site':progress<.077?'Sill plates':progress<.234?'Wall framing':progress<.288?'Beams & headers':progress<5/11?'Roof framing':progress<8/11?'Wall panels':progress<9/11?'Gable panels':progress<10/11?'Roof panels':'A place, taking shape';
+  document.querySelector('#build-stage').textContent=progress<2/11?'The site':progress<3.5/11?'Rear wall raised':progress<5/11?'Left wall raised':progress<6.5/11?'Right wall raised':progress<8/11?'Front wall raised':progress<10/11?'Roof frames arriving':'Open frame complete';
   document.querySelector('#build-value').textContent=`${Math.round(progress*100)}%`;
   if(now-uiAt>100){updateUI();uiAt=now;}
  }
