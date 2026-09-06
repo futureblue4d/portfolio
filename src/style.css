@@ -6,3 +6,5 @@ footer{text-shadow:0 1px 5px #000b,0 2px 20px #0007}body::after{content:"";posit
 @media(max-width:700px){header{gap:12px}.wordmark{font-size:22px}.wordmark span{font-size:7px}#about-open{position:fixed;left:24px;top:91px;font-size:10px;margin:0;padding:0}.intro{top:145px;left:24px}.intro h1{font-size:36px}.intro>span{display:none}#settings-toggle{font-size:10px;padding-top:4px}.instructions{font-size:9px}}
 
 @media(max-width:700px){.intro{top:140px}.intro h1{font-size:33px}}
+
+body[data-fallback] #sky{cursor:default}body[data-fallback]::before{content:"";position:fixed;inset:0;background:url(/assets/site-fallback.png) 65% bottom/cover no-repeat,linear-gradient(#5f8fbb,#9dbcd4 46%,#d6dfe0)}body[data-fallback] .timeline,body[data-fallback] .moment,body[data-fallback] .instructions,body[data-fallback] #settings-toggle,body[data-fallback] #settings{display:none}#fallback-note{max-width:330px;font-size:12px;line-height:1.65;opacity:.75;margin:26px 0 0}#fallback-note[hidden]{display:none}

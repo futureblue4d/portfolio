@@ -58,6 +58,8 @@ document.querySelector('#about-close').addEventListener('click',()=>about.close(
 let viewRect=new Float32Array([0,0,1,1]);
 document.querySelector('#scene').addEventListener('change',e=>{state.scene=e.target.value;resize();});
 function showError(message){const box=document.querySelector('#error');box.textContent=message;box.hidden=false;}
+// Without WebGL 2 there is no sky to drive, so fall back to a still view of the site.
+function enterFallback(){document.body.dataset.fallback='true';document.querySelector('#fallback-note').hidden=false;canvas.removeAttribute('tabindex');canvas.removeAttribute('aria-label');}
 function resize(){
  const quality={low:.45,balanced:.65,high:.9}[state.quality];
  const scale=Math.min(devicePixelRatio,1.5)*quality;
@@ -122,6 +124,7 @@ window.addEventListener('resize',resize);
 canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();cancelAnimationFrame(animationId);showError('The sky renderer was interrupted. Waiting for your browser to restore it…');});
 canvas.addEventListener('webglcontextrestored',()=>{try{setup();last=performance.now();animationId=requestAnimationFrame(frame);}catch(error){showError(error.message);}});
 updateUI();
-try{setup();animationId=requestAnimationFrame(frame);}catch(error){console.error(error);showError(error.message);}
+let running=false;
+try{setup();animationId=requestAnimationFrame(frame);running=true;}catch(error){console.error(error);enterFallback();}
 
-import('./house.js').then(({HouseStudy})=>new HouseStudy().init()).then(result=>{house=result;house.resize(viewRect,innerWidth,innerHeight);}).catch(error=>{console.error(error);showError('The 3D frame could not initialize. The sky and landscape are still available.');});
+if(running)import('./house.js').then(({HouseStudy})=>new HouseStudy().init()).then(result=>{house=result;house.resize(viewRect,innerWidth,innerHeight);}).catch(error=>{console.error(error);showError('The 3D frame could not initialize. The sky and landscape are still available.');});
