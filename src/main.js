@@ -8,7 +8,7 @@ const clock = document.querySelector('#clock');
 const timeSlider = document.querySelector('#time');
 const play = document.querySelector('#play');
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-const state = {scene:'landscape', hour:16.5, target:16.5, playing:!reducedMotion, cover:.55, wind:.5, drift:0, quality:matchMedia('(pointer: coarse)').matches?'low':'balanced'};
+const state = {scene:'landscape', hour:14, target:14, playing:!reducedMotion, cover:.55, wind:.5, drift:0, quality:matchMedia('(pointer: coarse)').matches?'low':'balanced'};
 const wrap = n => (n % 24 + 24) % 24;
 function updateUI() {
   const h = wrap(state.hour), totalMinutes = Math.round(h*60)%1440, hours = Math.floor(totalMinutes/60), minutes = totalMinutes%60;
@@ -47,7 +47,19 @@ document.querySelector('#cover').addEventListener('input',e=>{state.cover=Number
 document.querySelector('#wind').addEventListener('input',e=>{state.wind=Number(e.target.value);document.querySelector('#wind-value').value=state.wind===0?'Still':state.wind<.8?'Gentle':state.wind<1.5?'Breezy':'Brisk';});
 document.querySelector('#quality').value=state.quality;
 document.querySelector('#quality').addEventListener('change',e=>{state.quality=e.target.value;resize();});
-let gl, program, uniforms, animationId, landscape;
+let gl, program, uniforms, animationId, landscape, house;
+let construction=.65,followTime=true;
+const buildSlider=document.querySelector('#construction');
+const follow=document.querySelector('#follow-time');
+buildSlider.addEventListener('input',()=>{construction=Number(buildSlider.value);followTime=false;follow.checked=false;});
+follow.addEventListener('change',()=>{followTime=follow.checked;});
+function constructionProgress(){
+ if(followTime){const h=wrap(state.hour);construction=h<5?1:Math.max(0,Math.min(1,(h-7)/11));}
+ return construction;
+}
+const about=document.querySelector('#about');
+document.querySelector('#about-open').addEventListener('click',()=>about.showModal());
+document.querySelector('#about-close').addEventListener('click',()=>about.close());
 let viewRect=new Float32Array([0,0,1,1]);
 document.querySelector('#scene').addEventListener('change',e=>{state.scene=e.target.value;resize();});
 function showError(message){const box=document.querySelector('#error');box.textContent=message;box.hidden=false;}
@@ -60,9 +72,10 @@ function resize(){
  canvas.width=Math.round(innerWidth*displayScale);canvas.height=Math.round(innerHeight*displayScale);
  const aspect=innerWidth/innerHeight;
  const rw=Math.min(1,aspect/2),rh=Math.min(1,2/aspect);
- viewRect=new Float32Array([Math.min(1-rw,Math.max(0,.625-rw/2)),(1-rh)*.5,rw,rh]);
+ viewRect=new Float32Array([Math.min(1-rw,Math.max(0,.65-rw/2)),(1-rh)*.5,rw,rh]);
  if(landscape)landscape.resize(Math.max(1,Math.round(innerWidth*ratio)),Math.max(1,Math.round(innerHeight*ratio)));
  if(gl)gl.viewport(0,0,canvas.width,canvas.height);
+ if(house)house.resize(viewRect,innerWidth,innerHeight);
 }
 function setup(){
  gl=canvas.getContext('webgl2',{alpha:false,antialias:false,depth:false,powerPreference:'high-performance'});
@@ -101,6 +114,11 @@ function frame(now){
   gl.uniform1f(uniforms.coverage,state.cover);gl.uniform1i(uniforms.steps,{low:36,balanced:56,high:88}[state.quality]);
   gl.drawArrays(gl.TRIANGLES,0,3);
   landscape.draw(state,viewRect,canvas.width,canvas.height);
+  const progress=constructionProgress();
+  if(house){try{house.draw(state,progress);}catch(error){console.error("House draw failed: "+String(error)+" "+error?.stack);house=null;}}
+  buildSlider.value=progress;
+  document.querySelector('#build-stage').textContent=progress<.02?'The site':progress<.17?'Sill plates':progress<.52?'Walls taking shape':progress<.64?'Beams & headers':progress<.99?'Roof structure':'A place, taking shape';
+  document.querySelector('#build-value').textContent=`${Math.round(progress*100)}%`;
   if(now-uiAt>100){updateUI();uiAt=now;}
  }
  animationId=requestAnimationFrame(frame);
@@ -110,3 +128,5 @@ canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();cancelAnimatio
 canvas.addEventListener('webglcontextrestored',()=>{try{setup();last=performance.now();animationId=requestAnimationFrame(frame);}catch(error){showError(error.message);}});
 updateUI();
 try{setup();animationId=requestAnimationFrame(frame);}catch(error){console.error(error);showError(error.message);}
+
+import('./house.js').then(({HouseStudy})=>new HouseStudy().init()).then(result=>{house=result;house.resize(viewRect,innerWidth,innerHeight);}).catch(error=>{console.error(error);document.querySelector('#build-stage').textContent='3D frame unavailable';document.querySelector('#construction-panel').title='The 3D renderer could not initialize. The sky and landscape are still available.';});

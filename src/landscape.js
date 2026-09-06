@@ -73,7 +73,7 @@ export class Landscape {
   this.photo=gl.createTexture();gl.activeTexture(gl.TEXTURE2);gl.bindTexture(gl.TEXTURE_2D,this.photo);
   gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([255,0,255,255]));
   this.configureTexture();
-  const image=new Image();image.src='/assets/panorama-keyed.png';
+  const image=new Image();image.src='/assets/empty-site-keyed.png';
   image.onload=()=>{
    if(gl.isContextLost())return;
    gl.activeTexture(gl.TEXTURE2);gl.bindTexture(gl.TEXTURE_2D,this.photo);

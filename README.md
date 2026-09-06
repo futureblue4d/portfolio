@@ -30,3 +30,13 @@ The default Panorama view composites `public/assets/panorama-keyed.png` beneath 
 The stars now rotate as a shared field with the clock. Dragging, scrolling, time presets, and the timeline update both scene lighting and cloud movement. Pause stops automatic weather and clock movement.
 
 See ASSETS.md for the built-in image-generation prompts and asset provenance.
+
+## Portfolio / house frame study
+
+`main` preserves the original one-house landscape. `house-frame-study` introduces the empty-site artwork and an Evan Gorman — Land Use Consulting portfolio concept. The practice dialog is introductory copy only; project credentials and contact information have not been invented.
+
+`src/house.js` uses Three.js WebGPURenderer, with automatic WebGL 2 fallback, on a transparent canvas over the WebGL sky. Add `?webgl` to force the fallback for testing. The engine is loaded separately so the landscape can start before the 3D frame is ready. A calibrated affine camera aligns the 3D footprint to the photographed slab and follows the landscape's responsive crop. Its coordinate system is explicitly matched to the backend so WebGPU does not replace the custom projection on first render.
+
+The model consists of sill plates, wall studs, a broad opening header, top plates, gable rafters, and a ridge beam. Each member grows from an anchored endpoint. With Follow time of day enabled, construction progresses from 7 a.m. to 6 p.m., stays complete overnight, and resets at 5 a.m. Dragging backward through the construction interval reverses assembly. The construction slider disables following and permits independent exploration; checking Follow time of day reattaches it. This is an illustrative daily cycle, not a real construction schedule.
+
+Limitations: the frame is conceptual, not structurally engineered or an approved proposal. The landscape is still a photograph with approximate relighting, not a recovered depth mesh. Frame illumination follows the sun but it does not yet cast physically accurate shadows onto the photographed terrain; the photograph also cannot occlude arbitrary 3D parts without an additional depth mask. Contact details and verified project case studies remain future portfolio content.
