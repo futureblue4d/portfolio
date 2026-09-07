@@ -20,8 +20,7 @@ float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 float hg(float c,float g){return (1.-g*g)/pow(max(.05,1.+g*g-2.*g*c),1.5);}
 // A continuous volume, softened at the floor and carved away toward the top.
 // Low frequencies form cloud masses; higher frequencies erode their edges.
-float twilightWeight;
-float daytimeDensity(vec3 p){
+float density(vec3 p){
  float h=(p.y-1.4)/2.8;
  if(h<=0.||h>=1.||coverage<.01)return 0.;
  vec3 q=p*vec3(.095,.16,.095)+vec3(drift*.018,0.,drift*.006);
@@ -36,31 +35,6 @@ float daytimeDensity(vec3 p){
  float erosion=(1.-billow)*.22+(1.-fine)*.20+(1.-detail)*.10;
  body=max(0.,body-erosion*(1.-body*.75));
  return body*smoothstep(0.,.12,h)*(1.-smoothstep(.64,1.,h))*1.45;
-}
-// Long cloud streets recede along the view direction. Perspective makes them
-// converge at the hills and fan out past the top of the fixed camera.
-float twilightDensity(vec3 p){
- float h=(p.y-1.4)/2.8;
- if(h<=0.||h>=1.||coverage<.01)return 0.;
- float across=p.x-.22*p.z;
- vec3 q=vec3(across*.17,p.y*.24,p.z*.025)+vec3(.31,.17,.48);
- q+=vec3(drift*.00012,0.,drift*.00004);
- float broad=texture(noiseMap,q).r;
- float shoulder=texture(noiseMap,q*2.3+vec3(.21,.39,.13)).g;
- float fine=texture(noiseMap,vec3(across*.65,p.y*.8,p.z*.15)+.27).g;
- // Uneven ribbons, broken by noise rather than evenly spaced solid stripes.
- float ribbons=.5+.5*sin(across*1.6+(broad-.5)*5.);
- float field=ribbons*.28+broad*.42+shoulder*.30;
- float threshold=mix(.79,.39,coverage);
- float body=smoothstep(threshold,threshold+.18,field);
- body=max(0.,body-(1.-fine)*.32);
- float envelope=smoothstep(.20,.38,h)*(1.-smoothstep(.55,.76,h));
- return body*envelope*.85;
-}
-float density(vec3 p){
- if(twilightWeight<.001)return daytimeDensity(p);
- if(twilightWeight>.999)return twilightDensity(p);
- return mix(daytimeDensity(p),twilightDensity(p),twilightWeight);
 }
 vec3 skyColor(vec3 rd,vec3 sun,float day,float dusk){
  float elevation=pow(max(rd.y,0.),.45);
@@ -87,7 +61,6 @@ void main(){
  float angle=(hour-${SOLAR_DAWN_HOUR.toFixed(1)})/24.*2.*PI;
  vec3 sun=normalize(vec3(cos(angle)*.85,sin(angle),.65));
  float day=smoothstep(-.17,.18,sun.y);
- twilightWeight=(1.-smoothstep(.13,.48,sun.y))*smoothstep(-.34,-.13,sun.y);
  float dusk=exp(-pow((sun.y-.015)/.19,2.));
  vec3 background=skyColor(rd,sun,day,dusk);
  vec3 result=background;
@@ -97,12 +70,10 @@ void main(){
   float dt=(farT-nearT)/float(steps);
   float jitter=hash(gl_FragCoord.xy);
   float transmission=1.;vec3 scatter=vec3(0.);
-  vec3 moonLight=normalize(vec3(-sun.x,.48,-sun.z));
-  vec3 lightDir=normalize(mix(moonLight,sun,smoothstep(-.23,-.08,sun.y)));
+  vec3 lightDir=day>.1?sun:normalize(vec3(-sun.x,.48,-sun.z));
   float mu=dot(rd,lightDir);
   float phase=.7*hg(mu,.55)+.3*hg(mu,-.2);
   vec3 sunlight=mix(vec3(.055,.075,.13),mix(vec3(1.,.34,.12),vec3(1.,.96,.86),smoothstep(.0,.4,sun.y))*1.7,day);
-  sunlight+=vec3(1.05,.42,.10)*twilightWeight*(.2+.7*smoothstep(-.25,.12,sun.y));
   vec3 ambient=mix(vec3(.018,.03,.06),vec3(.36,.49,.68),day);
   ambient=mix(ambient,vec3(.32,.19,.24),dusk*.45);
   for(int i=0;i<96;i++){
