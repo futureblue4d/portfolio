@@ -1,3 +1,4 @@
+import {SOLAR_DAWN_HOUR} from './solar.js';
 import {vertex} from './shaders.js';
 
 const fragment = `#version 300 es
@@ -23,7 +24,7 @@ void main(){
  // Remove magenta contamination in antialiased branches and silhouette edges.
  vec3 color=max(vec3(0.),(photo.rgb-vec3(1.,0.,1.)*key)/max(alpha,.03));
  color=linear(clamp(color,0.,1.));
- float angle=(hour-6.)/24.*6.2831853;
+ float angle=(hour-${SOLAR_DAWN_HOUR.toFixed(1)})/24.*6.2831853;
  vec3 sun=normalize(vec3(cos(angle)*.85,sin(angle),.65));
  float day=smoothstep(-.16,.22,sun.y);
  float golden=exp(-pow((sun.y-.08)/.26,2.));

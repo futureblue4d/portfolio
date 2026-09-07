@@ -1,3 +1,4 @@
+import {SOLAR_DAWN_HOUR} from './solar.js';
 import {compileProgram} from './landscape.js';
 
 const vertex=`#version 300 es
@@ -23,7 +24,7 @@ void main(){
  gl_Position=vec4(screen,0.,1.);
  if(d.z<=0.||d.y<=0.)gl_Position=vec4(3.,3.,0.,1.);
  gl_PointSize=6.*pixelRatio;
- float angle=(hour-6.)/24.*6.28318530718;
+ float angle=(hour-${SOLAR_DAWN_HOUR.toFixed(1)})/24.*6.28318530718;
  float solar=sin(angle)/length(vec3(cos(angle)*.85,sin(angle),.65));
  float night=1.-smoothstep(-.28,-.10,solar);
  energy=brightness*night*smoothstep(0.,.18,d.y);

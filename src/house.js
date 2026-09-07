@@ -1,3 +1,4 @@
+import {SOLAR_DAWN_HOUR} from './solar.js';
 import * as THREE from 'three/webgpu';
 
 // A small true 3D timber model. An affine camera is calibrated to the four
@@ -73,7 +74,7 @@ export class HouseStudy {
   if(!this.ready)return;
   this.canvas.hidden=state.scene!=='landscape';if(this.canvas.hidden)return;
   for(const assembly of this.assemblies)assembly.group.visible=progress>=assembly.start;
-  const angle=(state.hour-6)/24*Math.PI*2;
+  const angle=(state.hour-SOLAR_DAWN_HOUR)/24*Math.PI*2;
   const day=THREE.MathUtils.smoothstep(Math.sin(angle),-.16,.22);
   const warm=Math.exp(-Math.pow((Math.sin(angle)-.08)/.26,2));
   this.ambient.intensity=.09+day*1.6;
