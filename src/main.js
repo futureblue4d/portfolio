@@ -73,6 +73,7 @@ function resize(){
  if(landscape)landscape.resize(Math.max(1,Math.round(innerWidth*ratio)),Math.max(1,Math.round(innerHeight*ratio)));
  if(gl)gl.viewport(0,0,canvas.width,canvas.height);
  if(house)house.resize(viewRect,innerWidth,innerHeight);
+ invalidate();
 }
 function setup(){
  gl=canvas.getContext('webgl2',{alpha:false,antialias:false,depth:false,powerPreference:'high-performance'});
@@ -94,7 +95,10 @@ function setup(){
  document.querySelector('#error').hidden=true;
  canvas.dataset.renderer='webgl2';
 }
-let last=performance.now(),uiAt=0;
+let last=performance.now(),uiAt=0,drawnKey='',drawnAt=0;
+// Frames that would repaint an identical scene are skipped: the canvases keep
+// their last image, so a paused, untouched view costs almost nothing.
+const invalidate=()=>{drawnKey='';};
 function frame(now){
  const dt=Math.min((now-last)/1000,.08);last=now;
  if(!document.hidden){
@@ -106,16 +110,23 @@ function frame(now){
   if(Math.abs(state.target-state.hour)<.0005)state.hour=state.target;
   // Clock changes move the weather forward or backward as well as the sun.
   state.drift+=(state.hour-oldHour)*1.8+(state.playing?dt*state.wind*.12:0);
-  gl.bindVertexArray(screenVao);landscape.beginSky();gl.useProgram(program);
-  gl.uniform2f(uniforms.resolution,landscape.width,landscape.height);
-  gl.uniform4fv(uniforms.viewRect,viewRect);gl.uniform1f(uniforms.landscapeEnabled,state.scene==='landscape'?1:0);
-  gl.uniform1f(uniforms.hour,wrap(state.hour));gl.uniform1f(uniforms.drift,state.drift);
-  gl.uniform1f(uniforms.coverage,state.cover);gl.uniform1i(uniforms.steps,{low:36,balanced:56,high:88}[state.quality]);
-  gl.drawArrays(gl.TRIANGLES,0,3);
-  landscape.draw(state,viewRect,canvas.width,canvas.height);
-  stars.draw(state,viewRect,canvas.width,canvas.height,landscape.ready);
-  const progress=constructionProgress();
-  if(house){try{house.draw(state,progress);}catch(error){console.error("House draw failed: "+String(error)+" "+error?.stack);house=null;}}
+  const key=[wrap(state.hour),state.drift,state.cover,state.scene,state.quality,landscape.ready,!!house].join();
+  // Unattended play moves the sky slowly enough that 30 fps looks the same as 60;
+  // dragging and easing toward a new time keep the full frame rate.
+  const settling=drag||Math.abs(state.target-state.hour)>.01;
+  if(key!==drawnKey&&(settling||now-drawnAt>30)){
+   drawnKey=key;drawnAt=now;
+   gl.bindVertexArray(screenVao);landscape.beginSky();gl.useProgram(program);
+   gl.uniform2f(uniforms.resolution,landscape.width,landscape.height);
+   gl.uniform4fv(uniforms.viewRect,viewRect);gl.uniform1f(uniforms.landscapeEnabled,state.scene==='landscape'?1:0);
+   gl.uniform1f(uniforms.hour,wrap(state.hour));gl.uniform1f(uniforms.drift,state.drift);
+   gl.uniform1f(uniforms.coverage,state.cover);gl.uniform1i(uniforms.steps,{low:36,balanced:56,high:88}[state.quality]);
+   gl.drawArrays(gl.TRIANGLES,0,3);
+   landscape.draw(state,viewRect,canvas.width,canvas.height);
+   stars.draw(state,viewRect,canvas.width,canvas.height,landscape.ready);
+   const progress=constructionProgress();
+   if(house){try{house.draw(state,progress);}catch(error){console.error("House draw failed: "+String(error)+" "+error?.stack);house=null;}}
+  }
   if(now-uiAt>100){updateUI();uiAt=now;}
  }
  animationId=requestAnimationFrame(frame);

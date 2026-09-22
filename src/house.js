@@ -17,18 +17,13 @@ export class HouseStudy {
   this.ambient=new THREE.HemisphereLight(0xd9e8ff,0x66503c,2.2);this.scene.add(this.ambient);
   this.sun=new THREE.DirectionalLight(0xffe5bb,2.5);this.sun.position.set(-7,9,5);this.scene.add(this.sun);
   this.material=new THREE.MeshStandardMaterial({color:0xf1cf98,roughness:.87,metalness:0});
-  this.members=[];this.assemblies=[];this.geometry=new THREE.BoxGeometry(1,1,1);
-  let current;
-  const assembly=(name,hour)=>{
-   const group=new THREE.Group();group.name=name;this.scene.add(group);
-   current={group,start:(hour-7)/11,name};this.assemblies.push(current);
-  };
+  this.assemblies=[];const matrices=[];
+  const assembly=(name,hour)=>this.assemblies.push({name,start:(hour-7)/11,end:matrices.length});
   const beam=(a,b,width=.12)=>{
    const from=new THREE.Vector3(...a),to=new THREE.Vector3(...b),delta=to.clone().sub(from);
-   const mesh=new THREE.Mesh(this.geometry,this.material);
-   mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),delta.clone().normalize());
-   mesh.scale.set(width,delta.length(),width);mesh.position.copy(from).addScaledVector(delta,.5);
-   mesh.frustumCulled=false;current.group.add(mesh);this.members.push({mesh,assembly:current});
+   const rotation=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),delta.clone().normalize());
+   matrices.push(new THREE.Matrix4().compose(from.addScaledVector(delta,.5),rotation,new THREE.Vector3(width,delta.length(),width)));
+   this.assemblies.at(-1).end=matrices.length;
   };
   // Complete open stud walls arrive upright as units: no sheathing and no
   // individual members growing out of the slab. Each threshold is reversible.
@@ -55,11 +50,16 @@ export class HouseStudy {
    if(i===0||i===5)beam([5,3,z],[5,4.7,z]);
   }
   assembly('Ridge beam',17);beam([5,4.7,0],[5,4.7,7],.20);
+  // Every member is one instance of a single box. Assemblies arrive in order, so
+  // the visible frame is always a prefix of the instances: one draw call.
+  this.frame=new THREE.InstancedMesh(new THREE.BoxGeometry(1,1,1),this.material,matrices.length);
+  matrices.forEach((matrix,i)=>this.frame.setMatrixAt(i,matrix));
+  this.frame.frustumCulled=false;this.scene.add(this.frame);
   this.ready=true;return this;
  }
  resize(rect,w,h) {
   if(!this.ready)return;
-  this.renderer.setPixelRatio(Math.min(devicePixelRatio,2));this.renderer.setSize(w,h,false);
+  this.renderer.setPixelRatio(Math.min(devicePixelRatio,2));this.renderer.setSize(w,h,false);this.rendered=null;
   const [ox,oy,rw,rh]=rect;
   // Image coordinates use bottom-left origin, matching the landscape shader.
   this.camera.projectionMatrix.set(
@@ -73,7 +73,12 @@ export class HouseStudy {
  draw(state,progress){
   if(!this.ready)return;
   this.canvas.hidden=state.scene!=='landscape';if(this.canvas.hidden)return;
-  for(const assembly of this.assemblies)assembly.group.visible=progress>=assembly.start;
+  const built=this.assemblies.filter(a=>progress>=a.start);
+  // Lighting follows the hour smoothly enough that a change under ~7 scene seconds
+  // is invisible, so the frame repaints only when it is built further or relit.
+  if(this.rendered&&this.rendered.built===built.length&&Math.abs(state.hour-this.rendered.hour)<.002)return;
+  this.rendered={built:built.length,hour:state.hour};
+  this.frame.count=built.at(-1)?.end??0;this.frame.visible=this.frame.count>0;
   const angle=(state.hour-SOLAR_DAWN_HOUR)/24*Math.PI*2;
   const day=THREE.MathUtils.smoothstep(Math.sin(angle),-.16,.22);
   const warm=Math.exp(-Math.pow((Math.sin(angle)-.08)/.26,2));
@@ -84,7 +89,7 @@ export class HouseStudy {
   this.sun.position.set(Math.cos(angle)*12,Math.sin(angle)*12,8);
   this.renderer.render(this.scene,this.camera);
   this.canvas.dataset.progress=progress.toFixed(3);
-  this.canvas.dataset.assemblies=this.assemblies.filter(a=>a.group.visible).map(a=>a.name).join(",");
-  this.canvas.dataset.members=String(this.members.filter(m=>m.assembly.group.visible).length);
+  this.canvas.dataset.assemblies=built.map(a=>a.name).join(",");
+  this.canvas.dataset.members=String(this.frame.count);
  }
 }
