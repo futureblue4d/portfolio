@@ -24,16 +24,34 @@ float density(vec3 p){
  float h=(p.y-1.4)/2.8;
  if(h<=0.||h>=1.||coverage<.01)return 0.;
  vec3 q=p*vec3(.095,.16,.095)+vec3(drift*.018,0.,drift*.006);
- float base=texture(noiseMap,q).r;
- float billow=texture(noiseMap,q*2.03+vec3(.31,.17,.53)).g;
- float fine=texture(noiseMap,q*5.1).g;
- float detail=texture(noiseMap,q*12.7).g;
- float shape=base*.68+billow*.32;
  float threshold=mix(.72,.30,coverage);
  threshold+=pow(h,2.)*.21;
+ // Air whose shape cannot clear the threshold stays empty whatever the finer
+ // octaves say, so it skips their fetches. The result is unchanged.
+ float base=texture(noiseMap,q).r;
+ if(base*.68+.32<=threshold)return 0.;
+ float billow=texture(noiseMap,q*2.03+vec3(.31,.17,.53)).g;
+ float shape=base*.68+billow*.32;
+ if(shape<=threshold)return 0.;
+ float fine=texture(noiseMap,q*5.1).g;
+ float detail=texture(noiseMap,q*12.7).g;
  float body=smoothstep(threshold,threshold+.18,shape);
  float erosion=(1.-billow)*.22+(1.-fine)*.20+(1.-detail)*.10;
  body=max(0.,body-erosion*(1.-body*.75));
+ return body*smoothstep(0.,.12,h)*(1.-smoothstep(.64,1.,h))*1.45;
+}
+// Two-fetch density for the farther light samples: fine erosion barely changes
+// the optical depth they accumulate, so shadows keep their shape at half the cost.
+float coarseDensity(vec3 p){
+ float h=(p.y-1.4)/2.8;
+ if(h<=0.||h>=1.||coverage<.01)return 0.;
+ vec3 q=p*vec3(.095,.16,.095)+vec3(drift*.018,0.,drift*.006);
+ float threshold=mix(.72,.30,coverage)+pow(h,2.)*.21;
+ float base=texture(noiseMap,q).r;
+ if(base*.68+.32<=threshold)return 0.;
+ float billow=texture(noiseMap,q*2.03+vec3(.31,.17,.53)).g;
+ float body=smoothstep(threshold,threshold+.18,base*.68+billow*.32);
+ body=max(0.,body-(1.-billow)*.22*(1.-body*.75));
  return body*smoothstep(0.,.12,h)*(1.-smoothstep(.64,1.,h))*1.45;
 }
 vec3 skyColor(vec3 rd,vec3 sun,float day,float dusk){
@@ -84,9 +102,9 @@ void main(){
     float optical=0.;
     // Exponentially spaced light samples approximate self-shadowing.
     optical+=density(p+lightDir*.16)*.3;
-    optical+=density(p+lightDir*.5)*.6;
-    optical+=density(p+lightDir*1.2)*1.2;
-    optical+=density(p+lightDir*2.6)*2.;
+    optical+=coarseDensity(p+lightDir*.5)*.6;
+    optical+=coarseDensity(p+lightDir*1.2)*1.2;
+    optical+=coarseDensity(p+lightDir*2.6)*2.;
     float direct=exp(-optical*2.1);
     float multiple=.24*exp(-optical*.5)+.10*exp(-optical*.13);
     float h=sat((p.y-1.4)/2.8);
