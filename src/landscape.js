@@ -16,14 +16,12 @@ void main(){
  vec3 sky=texture(skyMap,uv).rgb;
  if(ready<.5||enabled<.5){fragColor=vec4(sky,1.);return;}
  vec2 p=viewRect.xy+uv*viewRect.zw;
+ // The sky is a baked alpha channel (scripts/bake-landscape.mjs), uploaded
+ // premultiplied so filtering at the skyline does not darken the edges.
  vec4 photo=texture(landscapeMap,p);
- // Chroma separation is limited to the skyline; purple flowers stay intact.
- float key=smoothstep(.05,.40,min(photo.r,photo.b)-photo.g)*smoothstep(.26,.33,p.y);
- float alpha=1.-key;
+ float alpha=photo.a;
  if(alpha<.005){fragColor=vec4(sky,1.);return;}
- // Remove magenta contamination in antialiased branches and silhouette edges.
- vec3 color=max(vec3(0.),(photo.rgb-vec3(1.,0.,1.)*key)/max(alpha,.03));
- color=linear(clamp(color,0.,1.));
+ vec3 color=linear(clamp(photo.rgb/alpha,0.,1.));
  float angle=(hour-${SOLAR_DAWN_HOUR.toFixed(1)})/24.*6.2831853;
  vec3 sun=normalize(vec3(cos(angle)*.85,sin(angle),.65));
  float day=smoothstep(-.16,.22,sun.y);
@@ -72,15 +70,15 @@ export class Landscape {
   this.sky=gl.createTexture();gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,this.sky);
   this.configureTexture();
   this.photo=gl.createTexture();gl.activeTexture(gl.TEXTURE2);gl.bindTexture(gl.TEXTURE_2D,this.photo);
-  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([255,0,255,255]));
+  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([0,0,0,0]));
   this.configureTexture();
-  const image=new Image();image.src='/assets/empty-site-keyed.png';
+  const image=new Image();image.src='/assets/empty-site.webp';
   image.onload=()=>{
    if(gl.isContextLost())return;
    gl.activeTexture(gl.TEXTURE2);gl.bindTexture(gl.TEXTURE_2D,this.photo);
-   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
+   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,true);
    gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,image);
-   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);
+   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,false);
    this.ready=true;document.querySelector('#sky').dataset.landscape='ready';
   };
   image.onerror=()=>onError('The landscape artwork could not load. Please reload the page.');

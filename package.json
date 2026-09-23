@@ -7,11 +7,13 @@
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "timelapse": "node scripts/timelapse.mjs"
+    "timelapse": "node scripts/timelapse.mjs",
+    "bake": "node scripts/bake-landscape.mjs"
   },
   "devDependencies": {
-    "vite": "^7.1.0",
-    "playwright": "^1.56.0"
+    "playwright": "^1.56.0",
+    "sharp": "^0.35.4",
+    "vite": "^7.1.0"
   },
   "dependencies": {
     "three": "^0.185.1"

@@ -44,9 +44,7 @@ void main(){
  float visibility=texture(skyMap,uv).a;
  if(enabled>.5&&ready>.5){
   vec2 p=viewRect.xy+uv*viewRect.zw;
-  vec3 photo=texture(landscapeMap,p).rgb;
-  float sky=smoothstep(.05,.40,min(photo.r,photo.b)-photo.g)*smoothstep(.26,.33,p.y);
-  visibility*=sky;
+  visibility*=1.-texture(landscapeMap,p).a;
  }
  // A ~1.5 CSS-pixel FWHM footprint spreads light continuously across pixels.
  // Fixed star brightness: no clock noise, per-frame reseeding, or twinkle term.
